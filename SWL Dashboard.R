@@ -29,9 +29,9 @@ dob_permits_chart<-data.table::fread(glue("{dir}/Data/dob_permits_chart.csv"))
 
 dob_subtypes <- data.table::fread(glue("{dir}/Data/dob_subtypes.csv")) 
 
-citywide_sales_permit <- data.table::fread(glue("{dir}/Data/sales_permits_totals_city.csv"))
+#citywide_sales_permit <- data.table::fread(glue("{dir}/Data/sales_permits_totals_city.csv"))
 
-swl_sales_permits <- data.table::fread(glue("{dir}/Data/swl_sales_permits.csv"))
+#swl_sales_permits <- data.table::fread(glue("{dir}/Data/swl_sales_permits.csv"))
 
 swl_bldgs <- data.table::fread(glue("{dir}/Data/Speculation_Watch_List.csv"))
 
@@ -50,6 +50,10 @@ master_harassment <- data.table::fread(glue("{dir}/Data/master_harassment.csv"))
 oca_harassment_grouped <- data.table::fread(glue("{dir}/Data/oca_harassment_grouped.csv"))
 
 oca_executed_grouped <- data.table::fread(glue("{dir}/Data/oca_executed_grouped.csv"))
+
+##attempting to create a map with a geojson file
+
+#master_executed_zip <- geojsonio::geojson_read(glue("{dir}/Data/master_executed_group_zip.geojson"), what = "sp")
 
 #HPD Complaint yearly data 
 comp_details_wide <- data.table::fread(glue("{dir}/Data/comp_per_year_all_types.csv"))
@@ -338,6 +342,12 @@ body <- dashboardBody(
               tabPanel(
                 "Possible Harassment Cases",
                 leafletOutput("harass_leaflet", height = "85vh"),
+                width = 12
+              ),
+              
+              tabPanel(
+                "Executed Evictions",
+                leafletOutput("executed_zip_leaflet", height = "85vh"),
                 width = 12
               ),
               
@@ -715,7 +725,64 @@ server <- function(input, output, session) {
                 title= "Building Type", 
                 opacity = 1)
   })
-
+  
+ 
+####LOTS OF TESTING WITH NEW MAPPING####
+  master_executed_zip <- sf::read_sf(glue("{dir}/Data/master_executed_group_zip_wide.geojson"))
+  master_executed_zip_transformed <- sf::st_transform(master_executed_zip, "+init=epsg:4326") #sweet jesus
+  master_executed_zip_transformed$Refactored_Qualified.Transactions[master_executed_zip_transformed$Refactored_Qualified.Transactions == "NA"] =  NA
+  master_executed_zip_transformed$Refactored_SWL[master_executed_zip_transformed$Refactored_SWL == "NA"] =  NA
+  
+  
+  #swl_eligible_executed <- subset(master_executed_zip_transformed, Refactored_type %in% c("SWL"))
+  
+  pal <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_SWL.Eligible)
+  #pal2 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_Qualified.Transactions)
+  #pal3 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_SWL)
+  
+  output$executed_zip_leaflet <- renderLeaflet({
+    leaflet(master_executed_zip_transformed) %>% 
+      addTiles() %>% 
+      setView(-74.00, 40.71, zoom = 12) %>% 
+      addProviderTiles("CartoDB.Positron") %>% 
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal(Refactored_SWL.Eligible),
+                  label = ~paste0(ZIPCODE, ": ", Refactored_SWL.Eligible),
+                  group = "SWL Eligible", #pls god 
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      # addPolygons(color = "#444444",
+      #             weight = 1,
+      #             smoothFactor = 0.5,
+      #             opacity =1.0,
+      #             fillOpacity = 0.5,
+      #             fillColor = ~pal2(Refactored_Qualified.Transactions),
+      #             label = ~paste0(ZIPCODE, ": ", Refactored_Qualified.Transactions),
+      #             group = "SWL Eligible", #pls god 
+      #             highlight = highlightOptions(
+      #               weight = 3,
+      #               fillOpacity = 0.6,
+      #               color = "white",
+      #               opacity = 1.0,
+      #               bringToFront = T,
+      #               sendToBack = T
+      #             )) %>%
+      addLegend("bottomright",
+                pal = pal,
+                values = ~Refactored_SWL.Eligible,
+                title = "# of Executed Evictions")
+  })
+  ####END TESTING WITH NEW MAPPING####
   
   # output$oca_leaflet <- renderLeaflet ({
   #   leaflet() %>%
