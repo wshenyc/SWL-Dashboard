@@ -1,0 +1,18 @@
+permit_type,permit_subtype,count
+Alteration,None,2315
+Construction Equipment,Chute,20
+Construction Equipment,Fence,131
+Construction Equipment,Other General Construction,88
+Construction Equipment,Scaffold,302
+Construction Equipment,Sidewalk Shed,1144
+Equipment Work,Boiler,766
+Equipment Work,Fuel Burning,736
+Equipment Work,Fire suppression,188
+Equipment Work,Fuel Storage,280
+Equipment Work,Mechanical/HVAC,1236
+Equipment Work,Other General Construction,9948
+Equipment Work,Standpipe,12
+Equipment Work,Sprinkler,123
+Foundation/Earthwork,Earthwork,3
+Foundation/Earthwork,None,4
+Plumbing,None,6163
