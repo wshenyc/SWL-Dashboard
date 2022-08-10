@@ -346,7 +346,7 @@ body <- dashboardBody(
               ),
               
               tabPanel(
-                "Executed Evictions",
+                "Executed Evictions by Zipcode",
                 leafletOutput("executed_zip_leaflet", height = "85vh"),
                 width = 12
               ),
@@ -733,12 +733,15 @@ server <- function(input, output, session) {
   master_executed_zip_transformed$Refactored_Qualified.Transactions[master_executed_zip_transformed$Refactored_Qualified.Transactions == "NA"] =  NA
   master_executed_zip_transformed$Refactored_SWL[master_executed_zip_transformed$Refactored_SWL == "NA"] =  NA
   
+  master_executed_zip_transformed <- master_executed_zip_transformed %>% 
+    mutate(Refactored_Qualified.Transactions = as.integer(Refactored_Qualified.Transactions),
+           Refactored_SWL = as.integer(Refactored_SWL))
   
   #swl_eligible_executed <- subset(master_executed_zip_transformed, Refactored_type %in% c("SWL"))
   
   pal <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_SWL.Eligible)
-  #pal2 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_Qualified.Transactions)
-  #pal3 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_SWL)
+  pal2 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_Qualified.Transactions)
+  pal3 <- colorNumeric("viridis", domain = master_executed_zip_transformed$Refactored_SWL)
   
   output$executed_zip_leaflet <- renderLeaflet({
     leaflet(master_executed_zip_transformed) %>% 
@@ -752,7 +755,7 @@ server <- function(input, output, session) {
                   fillOpacity = 0.5,
                   fillColor = ~pal(Refactored_SWL.Eligible),
                   label = ~paste0(ZIPCODE, ": ", Refactored_SWL.Eligible),
-                  group = "SWL Eligible", #pls god 
+                  group = "Eligible",
                   highlight = highlightOptions(
                     weight = 3,
                     fillOpacity = 0.6,
@@ -761,26 +764,75 @@ server <- function(input, output, session) {
                     bringToFront = T,
                     sendToBack = T
                   )) %>%
-      # addPolygons(color = "#444444",
-      #             weight = 1,
-      #             smoothFactor = 0.5,
-      #             opacity =1.0,
-      #             fillOpacity = 0.5,
-      #             fillColor = ~pal2(Refactored_Qualified.Transactions),
-      #             label = ~paste0(ZIPCODE, ": ", Refactored_Qualified.Transactions),
-      #             group = "SWL Eligible", #pls god 
-      #             highlight = highlightOptions(
-      #               weight = 3,
-      #               fillOpacity = 0.6,
-      #               color = "white",
-      #               opacity = 1.0,
-      #               bringToFront = T,
-      #               sendToBack = T
-      #             )) %>%
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal2(Refactored_Qualified.Transactions),
+                  label = ~paste0(ZIPCODE, ": ", Refactored_Qualified.Transactions),
+                  group = "Qualified", 
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal2(Refactored_SWL),
+                  label = ~paste0(ZIPCODE, ": ", Refactored_SWL),
+                  group = "SWL", 
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      addLayersControl(
+        baseGroups = c("Eligible", "Qualified", "SWL"),
+        options = layersControlOptions(collapsed = FALSE)
+      ) %>% 
       addLegend("bottomright",
+                group = "Eligible",
                 pal = pal,
                 values = ~Refactored_SWL.Eligible,
-                title = "# of Executed Evictions")
+                className = "info legend Eligible",
+                title = "# of Executed Evictions - SWL Eligible") %>% 
+      addLegend("bottomright",
+                group = "Qualified",
+                pal = pal2,
+                values = ~Refactored_Qualified.Transactions,
+                className = "info legend Qualified",
+                title = "# of Executed Evictions - Qualified Transactions") %>% 
+      addLegend("bottomright",
+                group = "SWL",
+                pal = pal3,
+                values = ~Refactored_SWL,
+                className = "info legend SWL",
+                title = "# of Executed Evictions - SWL Only") %>% 
+      htmlwidgets::onRender("
+      function(el, x) {
+         var updateLegend = function () {
+            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+            document.querySelectorAll('.legend').forEach(l => {
+               if (l.classList.contains(selectedGroup)) l.hidden=false;
+            });
+         };
+         updateLegend();
+         this.on('baselayerchange', el => updateLegend());
+      }"
+      )
+      
   })
   ####END TESTING WITH NEW MAPPING####
   
