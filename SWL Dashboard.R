@@ -804,36 +804,47 @@ server <- function(input, output, session) {
                 group = "Eligible",
                 pal = pal,
                 values = ~Refactored_SWL.Eligible,
-                className = "info legend Eligible",
+                layerId = "Eligible",
+                #className = "info legend Eligible",
                 title = "# of Executed Evictions - SWL Eligible") %>% 
       addLegend("bottomright",
                 group = "Qualified",
                 pal = pal2,
                 values = ~Refactored_Qualified.Transactions,
-                className = "info legend Qualified",
+                layerId = "Qualified",
+                #className = "info legend Qualified",
                 title = "# of Executed Evictions - Qualified Transactions") %>% 
       addLegend("bottomright",
                 group = "SWL",
                 pal = pal3,
                 values = ~Refactored_SWL,
-                className = "info legend SWL",
+                layerId = "SWL",
+                #className = "info legend SWL",
                 title = "# of Executed Evictions - SWL Only") %>% 
       htmlwidgets::onRender("
-      function(el, x) {
-         var updateLegend = function () {
-            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
-
-            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-            document.querySelectorAll('.legend').forEach(l => {
-               if (l.classList.contains(selectedGroup)) l.hidden=false;
-            });
-         };
-         updateLegend();
-         this.on('baselayerchange', el => updateLegend());
-      }"
-      )
-      
+    function() { 
+      var map = this;
+      var legends = map.controls._controlsById;
+      function addActualLegend() {
+         var sel = $('.leaflet-control-layers-base').find('input[type=\"radio\"]:checked').siblings('span').text().trim();
+         $.each(map.controls._controlsById, (nm) => map.removeControl(map.controls.get(nm)));
+         map.addControl(legends[sel]);
+      }
+      $('.leaflet-control-layers-base').on('click', addActualLegend);
+      addActualLegend();
+   }")   
   })
+  
+  # observeEvent(input$mymap_groups,{
+  #   mymap <- leafletProxy("mymap", data = SalesMap)
+  #   mymap %>% clearControls()
+  #   if (input$mymap_groups == '1') {
+  #     mymap %>% addLegend(position="bottomright", pal=pal1, values=SalesMap$SALES, title="a")
+  #   }
+  #   else if (input$mymap_groups == '2') {
+  #     mymap %>% addLegend(position="bottomright", pal=pal2, values=SalesMap$Bonnen, title="b")
+  #   }
+  # })
   ####END TESTING WITH NEW MAPPING####
   
   # output$oca_leaflet <- renderLeaflet ({
