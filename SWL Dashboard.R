@@ -43,17 +43,20 @@ swl_elig_table <- data.table::fread(glue("{dir}/Data/swl_elig_table.csv"))
 
 swl_eligible_geo <- data.table::fread(glue("{dir}/Data/swl_eligible_geocoded.csv"))
 
-master_executed <- data.table::fread(glue("{dir}/Data/master_executed.csv"))
+#oca data 
 
-master_harassment <- data.table::fread(glue("{dir}/Data/master_harassment.csv"))
+#master_executed <- data.table::fread(glue("{dir}/Data/master_executed.csv"))
+
+#master_harassment <- data.table::fread(glue("{dir}/Data/master_harassment.csv"))
 
 oca_harassment_grouped <- data.table::fread(glue("{dir}/Data/oca_harassment_grouped.csv"))
 
 oca_executed_grouped <- data.table::fread(glue("{dir}/Data/oca_executed_grouped.csv"))
 
-##attempting to create a map with a geojson file
+master_executed_types_grouped <- read_csv(glue("{dir}/Data/master_executed_types_grouped.csv"))
 
-#master_executed_zip <- geojsonio::geojson_read(glue("{dir}/Data/master_executed_group_zip.geojson"), what = "sp")
+master_harassment_types_grouped <- read_csv(glue("{dir}/Data/master_harassment_types_grouped.csv"))
+
 
 #HPD Complaint yearly data 
 comp_details_wide <- data.table::fread(glue("{dir}/Data/comp_per_year_all_types.csv"))
@@ -329,39 +332,65 @@ body <- dashboardBody(
     
     ), #hpd complaints tab item closer  
 
-
+####OCA CHARTS####
     tabItem(tabName = "evictions",
             tabBox(
               width = 12, 
+             
               tabPanel(
-                "Executed Evictions",
-                leafletOutput("oca_leaflet", height = "85vh"),
-                width = 12
-              ),#tabPanel closer
-              
-              tabPanel(
-                "Possible Harassment Cases",
-                leafletOutput("harass_leaflet", height = "85vh"),
+                "Executed Evictions by Zipcode",
+             #   leafletOutput("executed_zip_leaflet", height = "85vh"),
                 width = 12
               ),
               
               tabPanel(
-                "Executed Evictions by Zipcode",
-                leafletOutput("executed_zip_leaflet", height = "85vh"),
+                "Possible Harassment Cases by Zipcode",
+                leafletOutput("harassment_zip_leaflet", height = "85vh"),
                 width = 12
               ),
               
               tabPanel(
                 "Housing Court Quick Facts",
                 fluidRow(
-                  column(6,
-                  echarts4rOutput('harassment_pie')
+                tabBox(
+                  width = 12,
+                  tabPanel(
+                    "SWL Eligible",
+                    fluidRow(
+                      column(6,
+                             echarts4rOutput('harassment_pie')
+                      ),
+                      column(6,
+                             echarts4rOutput('executed_pie')
+                      )
+                    )
                   ),
-                  column(6,
-                  echarts4rOutput('executed_pie')
-                  )
-                )
-              )
+                  tabPanel(
+                    "Qualified Transactions",
+                    fluidRow(
+                      column(6,
+                             echarts4rOutput('harassment_pie_qt')
+                      ),
+                      column(6,
+                             echarts4rOutput('executed_pie_qt')
+                      )
+                    )
+                  ),
+                  tabPanel(
+                    "SWL",
+                    fluidRow(
+                      column(6,
+                             echarts4rOutput('harassment_pie_swl')
+                      ),
+                      column(6,
+                             echarts4rOutput('executed_pie_swl')
+                      )
+                    )
+                  )#tab panel closer
+                )#tab box closer
+                )#fluid row closer
+                
+              )#final tab panel closer
               
               
             )#tabBox closer
@@ -785,7 +814,7 @@ server <- function(input, output, session) {
                   smoothFactor = 0.5,
                   opacity =1.0,
                   fillOpacity = 0.5,
-                  fillColor = ~pal2(Refactored_SWL),
+                  fillColor = ~pal3(Refactored_SWL),
                   label = ~paste0(ZIPCODE, ": ", Refactored_SWL),
                   group = "SWL", 
                   highlight = highlightOptions(
@@ -835,48 +864,118 @@ server <- function(input, output, session) {
    }")   
   })
   
-  # observeEvent(input$mymap_groups,{
-  #   mymap <- leafletProxy("mymap", data = SalesMap)
-  #   mymap %>% clearControls()
-  #   if (input$mymap_groups == '1') {
-  #     mymap %>% addLegend(position="bottomright", pal=pal1, values=SalesMap$SALES, title="a")
-  #   }
-  #   else if (input$mymap_groups == '2') {
-  #     mymap %>% addLegend(position="bottomright", pal=pal2, values=SalesMap$Bonnen, title="b")
-  #   }
-  # })
   ####END TESTING WITH NEW MAPPING####
   
-  # output$oca_leaflet <- renderLeaflet ({
-  #   leaflet() %>%
-  #     addTiles() %>%
-  #     setView(-74.00, 40.71, zoom = 12) %>%
-  #     addProviderTiles("CartoDB.Positron") %>%
-  #     addCircleMarkers(data = oca_harassment, lng = ~longitude, lat = ~latitude,
-  #                      radius = 5, stroke = FALSE, fillOpacity = 0.5,
-  #                      color = ~pal(classification),
-  #                      popup = ~htmlEscape(classification),
-  #                      group = "Possible Harassment Cases") %>%
-  #     addCircleMarkers(data = oca_executed, lng = ~longitude, lat = ~latitude,
-  #                      radius = 5, stroke = FALSE, fillOpacity = 0.5,
-  #                      color = ~pal2(classification),
-  #                      popup = ~htmlEscape(paste(classification, execution_date, sep = " ")),
-  #                      group = "Executed Evictions",
-  #                      clusterOptions = markerClusterOptions()) %>%
-  #     addLayersControl(
-  #       overlayGroups = c("Possible Harassment Cases", "Executed Evictions"),
-  #       options = layersControlOptions(collapsed = FALSE)
-  #     ) %>%
-  #     addLegend("bottomright", pal = pal, values = unique(oca_harassment$classification), group = "Possible Harassment Cases",
-  #               title = "Possible Harassment Case Types",
-  #               opacity = 1) %>%
-  #     addLegend("bottomright", pal = pal2, values = unique(oca_executed$classification), group = "Executed Evictions",
-  #             title = "Eviction Case Types",
-  #             opacity = 1)
-  # })
+  ####harassment map####
+  master_harassment_zip <- sf::read_sf(glue("{dir}/Data/master_harassment_zip_wide.geojson"))
+  master_harassment_zip_transformed <- sf::st_transform(master_harassment_zip, "+init=epsg:4326") #sweet jesus
+  master_harassment_zip_transformed$harassment_zipcode_Qualified.Transactions[master_harassment_zip_transformed$harassment_zipcode_Qualified.Transactions == "NA"] =  NA
+  master_harassment_zip_transformed$harassment_zipcode_SWL[master_harassment_zip_transformed$harassment_zipcode_SWL == "NA"] =  NA
   
+  master_harassment_zip_transformed <- master_harassment_zip_transformed %>% 
+    mutate(harassment_zipcode_Qualified.Transactions = as.integer(harassment_zipcode_Qualified.Transactions),
+           harassment_zipcode_SWL = as.integer(harassment_zipcode_SWL))
+  
+  #swl_eligible_executed <- subset(master_executed_zip_transformed, Refactored_type %in% c("SWL"))
+  
+  pal_hs <- colorNumeric("viridis", domain = master_harassment_zip_transformed$harassment_zipcode_SWL.Eligible)
+  pal2_hs <- colorNumeric("viridis", domain = master_harassment_zip_transformed$harassment_zipcode_Qualified.Transactions)
+  pal3_hs <- colorNumeric("viridis", domain = master_harassment_zip_transformed$harassment_zipcode_SWL)
+  
+  output$harassment_zip_leaflet <- renderLeaflet({
+    leaflet(master_harassment_zip_transformed) %>% 
+      addTiles() %>% 
+      setView(-74.00, 40.71, zoom = 12) %>% 
+      addProviderTiles("CartoDB.Positron") %>% 
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal_hs(harassment_zipcode_SWL.Eligible),
+                  label = ~paste0(ZIPCODE, ": ", harassment_zipcode_SWL.Eligible),
+                  group = "Eligible-HS",
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal2_hs(harassment_zipcode_Qualified.Transactions),
+                  label = ~paste0(ZIPCODE, ": ", harassment_zipcode_Qualified.Transactions),
+                  group = "Qualified-HS", 
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      addPolygons(color = "#444444",
+                  weight = 1,
+                  smoothFactor = 0.5,
+                  opacity =1.0,
+                  fillOpacity = 0.5,
+                  fillColor = ~pal3_hs(harassment_zipcode_SWL),
+                  label = ~paste0(ZIPCODE, ": ", harassment_zipcode_SWL),
+                  group = "SWL-HS", 
+                  highlight = highlightOptions(
+                    weight = 3,
+                    fillOpacity = 0.6,
+                    color = "white",
+                    opacity = 1.0,
+                    bringToFront = T,
+                    sendToBack = T
+                  )) %>%
+      addLayersControl(
+        baseGroups = c("Eligible-HS", "Qualified-HS", "SWL-HS"),
+        options = layersControlOptions(collapsed = FALSE)
+      ) %>% 
+      addLegend("bottomright",
+                group = "Eligible-HS",
+                pal = pal_hs,
+                values = ~harassment_zipcode_SWL.Eligible,
+                layerId = "Eligible-HS",
+                title = "# of Possible Harassment Cases - SWL Eligible") %>% 
+      addLegend("bottomright",
+                group = "Qualified-HS",
+                pal = pal2_hs,
+                values = ~harassment_zipcode_Qualified.Transactions,
+                layerId = "Qualified-HS",
+                title = "# of Possible Harassment Cases - Qualified Transactions") %>% 
+      addLegend("bottomright",
+                group = "SWL-HS",
+                pal = pal3_hs,
+                values = ~harassment_zipcode_SWL,
+                layerId = "SWL-HS",
+                title = "# of Possible Harassment Cases - SWL Only") %>% 
+      htmlwidgets::onRender("
+    function() { 
+      var map = this;
+      var legends = map.controls._controlsById;
+      function addActualLegend() {
+         var sel = $('.leaflet-control-layers-base').find('input[type=\"radio\"]:checked').siblings('span').text().trim();
+         $.each(map.controls._controlsById, (nm) => map.removeControl(map.controls.get(nm)));
+         map.addControl(legends[sel]);
+      }
+      $('.leaflet-control-layers-base').on('click', addActualLegend);
+      addActualLegend();
+   }")   
+  })
+  ####end of harassment map####
+
+  ####harassment pie charts####
   output$harassment_pie <- renderEcharts4r({
-    oca_harassment_grouped %>%  
+    master_harassment_types_grouped %>%  
+      filter(type == "SWL Eligible") %>% 
     e_charts(classification) %>% 
       e_pie(count, radius = c("50%", "70%")) %>% 
       e_tooltip(formatter = htmlwidgets::JS("
@@ -890,8 +989,42 @@ server <- function(input, output, session) {
                bottom = '15%')
   })
   
+  output$harassment_pie_qt <- renderEcharts4r({
+    master_harassment_types_grouped %>%  
+      filter(type == "Qualified Transactions") %>% 
+      e_charts(classification) %>% 
+      e_pie(count, radius = c("50%", "70%")) %>% 
+      e_tooltip(formatter = htmlwidgets::JS("
+                                        function(params){
+                                        return('<strong>' + params.name + 
+                                        '</strong><br />Total: ' + params.value + 
+                                        '<br />Percent: ' +  params.percent)  +'%' }  ")) %>% 
+      e_title("Breakdown of Possible Harassment Case Types") %>% 
+      e_legend(orient = 'vertical',
+               right = '5',
+               bottom = '15%')
+  })
+  
+  output$harassment_pie_swl <- renderEcharts4r({
+    master_harassment_types_grouped %>%  
+      filter(type == "SWL") %>% 
+      e_charts(classification) %>% 
+      e_pie(count, radius = c("50%", "70%")) %>% 
+      e_tooltip(formatter = htmlwidgets::JS("
+                                        function(params){
+                                        return('<strong>' + params.name + 
+                                        '</strong><br />Total: ' + params.value + 
+                                        '<br />Percent: ' +  params.percent)  +'%' }  ")) %>% 
+      e_title("Breakdown of Possible Harassment Case Types") %>% 
+      e_legend(orient = 'vertical',
+               right = '5',
+               bottom = '15%')
+  })
+  
+  ####executed evictions pie charts####
   output$executed_pie <- renderEcharts4r({
-    oca_executed_grouped %>% 
+    master_executed_types_grouped %>% 
+      filter(type == "SWL Eligible") %>% 
       e_charts(classification) %>% 
       e_pie(count, radius = c("50%", "70%")) %>% 
       e_tooltip(formatter = htmlwidgets::JS("
@@ -904,6 +1037,40 @@ server <- function(input, output, session) {
                right = '5',
                bottom = '15%')
       
+  })
+  
+  output$executed_pie_qt <- renderEcharts4r({
+    master_executed_types_grouped %>% 
+      filter(type == "Qualified Transactions") %>% 
+      e_charts(classification) %>% 
+      e_pie(count, radius = c("50%", "70%")) %>% 
+      e_tooltip(formatter = htmlwidgets::JS("
+                                        function(params){
+                                        return('<strong>' + params.name + 
+                                        '</strong><br />Total: ' + params.value + 
+                                        '<br />Percent: ' +  params.percent)  +'%' }  ")) %>% 
+      e_title("Breakdown of Executed Eviction Case Types") %>% 
+      e_legend(orient = 'vertical',
+               right = '5',
+               bottom = '15%')
+    
+  })
+  
+  output$executed_pie_swl <- renderEcharts4r({
+    master_executed_types_grouped %>% 
+      filter(type == "SWL") %>%  
+      e_charts(classification) %>% 
+      e_pie(count, radius = c("50%", "70%")) %>% 
+      e_tooltip(formatter = htmlwidgets::JS("
+                                        function(params){
+                                        return('<strong>' + params.name + 
+                                        '</strong><br />Total: ' + params.value + 
+                                        '<br />Percent: ' +  params.percent)  +'%' }  ")) %>% 
+      e_title("Breakdown of Executed Eviction Case Types") %>% 
+      e_legend(orient = 'vertical',
+               right = '5',
+               bottom = '15%')
+    
   })
   
   

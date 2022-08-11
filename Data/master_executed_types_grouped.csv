@@ -1,0 +1,11 @@
+classification,type,count
+Article 7A,Qualified Transactions,1
+Article 7A,SWL Eligible,1
+Holdover,Qualified Transactions,115
+Holdover,SWL,49
+Holdover,SWL Eligible,2191
+Illegal Activity,SWL Eligible,1
+Illegal Lockout,SWL Eligible,6
+Non-Payment,Qualified Transactions,976
+Non-Payment,SWL,431
+Non-Payment,SWL Eligible,17089

@@ -1,0 +1,11 @@
+classification,type,count
+Article 7A,Qualified Transactions,7
+Article 7A,SWL,2
+Article 7A,SWL Eligible,20
+Breach of Warrant of Habitability,SWL Eligible,5
+Harassment,Qualified Transactions,31
+Harassment,SWL,13
+Harassment,SWL Eligible,596
+HP with Harassment,Qualified Transactions,76
+HP with Harassment,SWL,32
+HP with Harassment,SWL Eligible,929
