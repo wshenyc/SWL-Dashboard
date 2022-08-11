@@ -27,6 +27,12 @@ dob_permits_details <- data.table::fread(glue("{dir}/Data/dob_permit_swl.csv"))
 
 dob_permits_chart<-data.table::fread(glue("{dir}/Data/dob_permits_chart.csv")) 
 
+dob_permits_chart <- dob_permits_chart %>% 
+  mutate(BIN = as.character(BIN),
+         BBL = as.character(BBL),
+         Zipcode = as.character(Zipcode),
+         `Job Number` = as.character(`Job Number`))
+
 dob_subtypes <- data.table::fread(glue("{dir}/Data/dob_subtypes.csv")) 
 
 #citywide_sales_permit <- data.table::fread(glue("{dir}/Data/sales_permits_totals_city.csv"))
@@ -74,7 +80,14 @@ complaint_table <- read_csv(glue("{dir}/Data/complaint_table.csv")) %>%
 hpd_vios <- read_csv(glue("{dir}/Data/vios_per_year_all_types.csv"))
 
 #violations table
-hpd_vios_chart <- read_csv(glue("{dir}/Data/hpd_vios_table.csv"))
+hpd_vios_chart <- read_csv(glue("{dir}/Data/hpd_vios_table.csv")) %>% 
+  mutate(BBL = as.character(bbl),
+         violation_id = as.character(violation_id),
+         `SWL Eligible Building` = elig_flag,
+         `Qualified Transaction` = qual_flag,
+         `SWL Building` = swl_flag) %>% 
+  select(-c("bbl","elig_flag","qual_flag","swl_flag")) %>% 
+  janitor::clean_names(case = "title", abbreviations = c("BBL","SWL", "DOB", "BIS", "ID")) 
 
 #DOB violations & work without permit ECB violations
 wwp_avg <- read_csv(glue("{dir}/Data/wwp_avg.csv"))
@@ -82,10 +95,24 @@ dob_vios_avg <- read_csv(glue("{dir}/Data/dob_vios_avg.csv"))
 
 #DOB vio tables
 dob_vios_chart <- read_csv(glue("{dir}/Data/dob_vios_table.csv")) %>% 
-  drop_na()
+  drop_na() %>% 
+  mutate(BBL = as.character(bbl),
+         `DOB BIS Violation`=as.character(isn_dob_bis_viol),
+         `SWL Eligible Building` = elig_flag,
+         `Qualified Transaction` = qual_flag,
+         `SWL Building` = swl_flag) %>% 
+  select(-c("bbl", "isn_dob_bis_viol","elig_flag","qual_flag","swl_flag")) %>% 
+  janitor::clean_names(case = "title", abbreviations = c("BBL","SWL", "DOB", "BIS")) 
 
 wwp_chart <- read_csv(glue("{dir}/Data/wwp_table.csv")) %>% 
-  drop_na()
+  drop_na() %>% 
+  mutate(BBL = as.character(bbl),
+         `DOB BIS Violation`=as.character(isn_dob_bis_extract),
+         `SWL Eligible Building` = elig_flag,
+         `Qualified Transaction` = qual_flag,
+         `SWL Building` = swl_flag) %>% 
+  select(-c("bbl", "isn_dob_bis_extract","elig_flag","qual_flag","swl_flag")) %>% 
+  janitor::clean_names(case = "title", abbreviations = c("BBL","SWL", "DOB", "BIS", "ECB")) 
 
 #useful: https://echarts4r.john-coene.com/articles/get_started.html 
 
@@ -553,7 +580,8 @@ server <- function(input, output, session) {
       e_tooltip()
   })
 
-  output$dob_permit_table <- DT::renderDT(dob_permits_chart) 
+  output$dob_permit_table <- DT::renderDT(dob_permits_chart,
+                                          filter = 'top') 
 
 ##----DOB Violations-----------------------------------------------------------
 #
@@ -590,9 +618,11 @@ server <- function(input, output, session) {
       e_legend(right = 0)
   })
   
-  output$dob_vios_table <- DT::renderDT(dob_vios_chart) 
+  output$dob_vios_table <- DT::renderDT(dob_vios_chart,
+                                        filter = "top") 
   
-  output$wwp_table <- DT::renderDT(wwp_chart) 
+  output$wwp_table <- DT::renderDT(wwp_chart,
+                                   filter = "top") 
   
 ##----HPD Vios & Complaint Charts-----------------------------------------------------------
 #
@@ -673,9 +703,10 @@ server <- function(input, output, session) {
       e_tooltip()
   })
   
-  output$hpd_comp_table <- DT::renderDT(complaint_table) 
+  #output$hpd_comp_table <- DT::renderDT(complaint_table) 
   
-  output$hpd_vios_table <- DT::renderDT(hpd_vios_chart) 
+  output$hpd_vios_table <- DT::renderDT(hpd_vios_chart,
+                                        filter = "top") 
   
 ##----OCA Filings-----------------------------------------------------------
 #
